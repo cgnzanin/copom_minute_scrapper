@@ -53,7 +53,7 @@ Este projeto é uma aplicação de web scraping em Python para extrair e process
 
 ## Saída
 
-O script gera um arquivo `df_atas.fst` na pasta `output`, contendo as atas das reuniões do COPOM processadas.
+O script gera um arquivo `df_atas.fst` na pasta `assets`, contendo as atas das reuniões do COPOM processadas.
 
 ## Licença
 
