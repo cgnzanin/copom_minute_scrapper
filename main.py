@@ -72,19 +72,12 @@ def fetch_pdf_content(link: str, base_url: str = "https://www.bcb.gov.br") -> st
     pdf_url = f"{base_url}{link}"
     response = requests.get(pdf_url)
     response.raise_for_status()
-    # Verificando se o conteúdo é realmente um PDF
-    if response.headers["Content-Type"] == "application/pdf":
-        pdf_document = fitz.open(stream=response.content, filetype="pdf")
-        text = ""
-        for page in pdf_document:
-            text += page.get_text()
-        return text
-    else:
-        # Processando como HTML caso não seja um PDF
-        soup = BeautifulSoup(response.content, "html.parser")
-        text = soup.get_text(separator=" ", strip=True)
-        return text
-
+    
+    pdf_document = fitz.open(stream=response.content, filetype="pdf")
+    text = ""
+    for page in pdf_document:
+        text += page.get_text()
+    return text
 
 def fetch_content(row):
     if row["Tipo"] == "pdf":
