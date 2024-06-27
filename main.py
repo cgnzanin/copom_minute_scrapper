@@ -69,6 +69,9 @@ def fetch_html_content(link: str, base_url: str = "https://www.bcb.gov.br") -> s
 
 
 def fetch_pdf_content(link: str, base_url: str = "https://www.bcb.gov.br") -> str:
+    if not link:
+        return "Link vazio ou inválido"
+    
     pdf_url = f"{base_url}{link}"
     response = requests.get(pdf_url)
     response.raise_for_status()
