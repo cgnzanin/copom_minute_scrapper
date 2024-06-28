@@ -99,8 +99,8 @@ def main():
     df_pdfs["parcial"] = df_pdfs["integra"].apply(parcial)
     df_htmls["parcial"] = df_htmls["integra"].apply(parcial)
 
-    df_pdfs.to_parquet("assets/df_pdfs.parquet", compression='gzip')
-    df_htmls.to_parquet("assets/df_htmls.parquet", compression='gzip')
+    df_pdfs.to_parquet("assets/df_pdfs.parquet", compression='brotli')
+    df_htmls.to_parquet("assets/df_htmls.parquet", compression='brotli')
 
 
 if __name__ == "__main__":
