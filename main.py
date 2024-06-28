@@ -3,6 +3,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 import fitz  # PyMuPDF
 from typing import Dict
+from tqdm import tqdm
 
 
 def fetch_json(url: str) -> Dict:
@@ -22,9 +23,7 @@ def extract_data(json_data: Dict, link_key: str) -> pd.DataFrame:
 
 def get_copom_data() -> pd.DataFrame:
     base_url = "https://www.bcb.gov.br"
-    api_antigas = (
-        "/api/servico/sitebcb/atascopom-conteudo/ultimas?quantidade=1000&filtro="
-    )
+    api_antigas = "/api/servico/sitebcb/atascopom-conteudo/ultimas?quantidade=1000&filtro="
     api_novas = "/api/servico/sitebcb/atascopom/ultimas?quantidade=1000&filtro="
 
     json_antigas = fetch_json(f"{base_url}{api_antigas}")
@@ -44,24 +43,16 @@ def fetch_html_content(link: str, base_url: str = "https://www.bcb.gov.br") -> s
     json_url = f"{base_url}{api}{encoded_code}"
     json_response = fetch_json(json_url)
 
-    # Inspecionando a estrutura do JSON
-    print(json_response.keys())
     if "conteudo" in json_response:
-        if (
-            isinstance(json_response["conteudo"], list)
-            and len(json_response["conteudo"]) > 0
-        ):
+        if isinstance(json_response["conteudo"], list) and len(json_response["conteudo"]) > 0:
             first_item = json_response["conteudo"][0]
-            print(first_item.keys())
             if "OutrasInformacoes" in first_item:
                 html_content = first_item["OutrasInformacoes"]
                 soup = BeautifulSoup(html_content, "html.parser")
                 text = soup.get_text(separator=" ", strip=True)
                 return text
             else:
-                raise KeyError(
-                    "Key 'OutrasInformacoes' not found in the first item of 'conteudo'."
-                )
+                raise KeyError("Key 'OutrasInformacoes' not found in the first item of 'conteudo'.")
         else:
             raise TypeError("'conteudo' is not a list or is empty.")
     else:
@@ -71,18 +62,19 @@ def fetch_html_content(link: str, base_url: str = "https://www.bcb.gov.br") -> s
 def fetch_pdf_content(link: str, base_url: str = "https://www.bcb.gov.br") -> str:
     if not link:
         return "Link vazio ou inválido"
-    
+
     pdf_url = f"{base_url}{link}"
     response = requests.get(pdf_url)
     response.raise_for_status()
-    
+
     pdf_document = fitz.open(stream=response.content, filetype="pdf")
     text = ""
     for page in pdf_document:
         text += page.get_text()
     return text
 
-def fetch_content(row):
+
+def fetch_content(row) -> str:
     if row["Tipo"] == "pdf":
         return fetch_pdf_content(row["LinkPagina"])
     return fetch_html_content(row["LinkPagina"])
@@ -90,7 +82,7 @@ def fetch_content(row):
 
 def process_atas() -> pd.DataFrame:
     df_atas = get_copom_data()
-    df_atas["integra"] = df_atas.apply(fetch_content, axis=1)
+    df_atas["integra"] = [fetch_content(row) for _, row in tqdm(df_atas.iterrows(), total=df_atas.shape[0])]
     return df_atas
 
 
@@ -100,8 +92,15 @@ def parcial(text: str) -> str:
 
 def main():
     df_atas = process_atas()
-    df_atas["parcial"] = df_atas["integra"].apply(parcial)
-    df_atas.to_fst("assets/df_atas.fst", compress=50)
+
+    df_pdfs = df_atas[df_atas["Tipo"] == "pdf"]
+    df_htmls = df_atas[df_atas["Tipo"] == "html"]
+
+    df_pdfs["parcial"] = df_pdfs["integra"].apply(parcial)
+    df_htmls["parcial"] = df_htmls["integra"].apply(parcial)
+
+    df_pdfs.to_parquet("assets/df_pdfs.parquet", compression='gzip')
+    df_htmls.to_parquet("assets/df_htmls.parquet", compression='gzip')
 
 
 if __name__ == "__main__":
